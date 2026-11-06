@@ -8,6 +8,9 @@ Stage 1 compares a rolling-average reference engine with an incremental circular
 ## Stage 2
 Stage 2 adds a multi-feature dependency engine with rolling mean, rolling population variance, rolling volume, last-trade price change, best-quote size imbalance and spread. The reference engine recalculates feature groups on every event; the incremental engine updates only the group whose source payload changed.
 
+## Stage 3
+Stage 3 adds deterministic offline multi-level order-book replay with add/cancel/execute events, per-price aggregation, top-N depth, spread/midpoint, executed quantity and event-based order-flow imbalance (OFI). A rebuild-from-orders reference engine is checked against an incremental price-level engine. See `README_STAGE3.md`.
+
 ## Requirements and quick start
 - Python 3.10+
 - Runtime and tests use the standard library.
@@ -18,12 +21,13 @@ python -m unittest discover -s tests -v
 python -m efc
 python benchmarks/benchmark.py --events 200000 --repeats 5 --windows 10 50 100
 python benchmarks/benchmark_stage2.py --events 100000 --window 100 --repeats 5
+python benchmarks/benchmark_stage3.py --events 50000 --repeats 5
 \`\`\`
 
 On Windows, use \`py -3\` in place of \`python\` if necessary.
 
 ## Project layout
-- \`src/efc/\`: Stage 1 and Stage 2 engines, events, models and demo.
+- \`src/efc/\`: Stage 1, Stage 2 and Stage 3 engines, events, models and demo.
 - \`tests/\`: exact-equivalence, validation and dependency tests.
 - \`benchmarks/\`: host-side performance experiments.
 - \`research/\`: specifications, methodology, experiment logs and reading list.
