@@ -132,6 +132,8 @@ class _BaseBook:
         self._previous_top = None
         self._cumulative_ofi = 0
         self._executed_quantity = 0
+        self._total_bid_quantity = 0
+        self._total_ask_quantity = 0
         self._events = self._adds = self._cancels = self._executions = 0
         self._rejected = self._level_updates = self._rebuilds = 0
 
@@ -168,10 +170,18 @@ class _BaseBook:
             assert event.side is not None and event.price_ticks is not None and event.quantity is not None
             self._orders[event.order_id] = Order(event.order_id, event.side,
                                                   event.price_ticks, event.quantity)
+            if event.side == "B":
+                self._total_bid_quantity += event.quantity
+            else:
+                self._total_ask_quantity += event.quantity
             self._adds += 1
         else:
             assert existing is not None and event.quantity is not None
             remaining = existing.remaining - event.quantity
+            if existing.side == "B":
+                self._total_bid_quantity -= event.quantity
+            else:
+                self._total_ask_quantity -= event.quantity
             if remaining:
                 self._orders[event.order_id] = Order(existing.order_id, existing.side,
                                                       existing.price_ticks, remaining)
@@ -196,8 +206,7 @@ class _BaseBook:
             bid, ask, bid_qty, ask_qty,
             ask - bid if bid is not None and ask is not None else None,
             (bid + ask) / 2 if bid is not None and ask is not None else None,
-            len(self._orders), sum(x.remaining for x in self._orders.values() if x.side == "B"),
-            sum(x.remaining for x in self._orders.values() if x.side == "S"),
+            len(self._orders), self._total_bid_quantity, self._total_ask_quantity,
             ofi, self._cumulative_ofi, self._executed_quantity,
         )
 
@@ -219,7 +228,11 @@ class ReferenceBookEngine(_BaseBook):
         return _top(self._bids, self._asks)
 
     def on_event(self, event: BookEvent) -> BookSnapshot:
-        existing = self._validate_order_event(event)
+        try:
+            existing = self._validate_order_event(event)
+        except (TypeError, ValueError):
+            self._rejected += 1
+            raise
         self._apply_order_change(event, existing)
         bids: dict[int, list[int]] = {}
         asks: dict[int, list[int]] = {}
@@ -265,7 +278,11 @@ class EventDrivenBookEngine(_BaseBook):
         self._level_updates += 1
 
     def on_event(self, event: BookEvent) -> BookSnapshot:
-        existing = self._validate_order_event(event)
+        try:
+            existing = self._validate_order_event(event)
+        except (TypeError, ValueError):
+            self._rejected += 1
+            raise
         if event.action == "ADD":
             assert event.side is not None and event.price_ticks is not None and event.quantity is not None
             self._change_level(event.side, event.price_ticks, event.quantity, 1)
