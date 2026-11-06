@@ -1,36 +1,33 @@
 # Project EFC — Event-Driven Feature Computation
 
-An offline research prototype comparing a conventional rolling-average recalculation engine with an incremental event-driven engine.
+EFC is an offline research prototype for comparing conventional recalculation with incremental event-driven feature computation.
 
-## Research question
-Can an event-driven feature engine produce exactly the same rolling-average values as a conventional recalculation engine while reducing repeated rolling-sum arithmetic?
+## Stage 1
+Stage 1 compares a rolling-average reference engine with an incremental circular-buffer engine. It checks exact equality and counts selected rolling-sum arithmetic operations.
 
-## Requirements
+## Stage 2
+Stage 2 adds a multi-feature dependency engine with rolling mean, rolling population variance, rolling volume, last-trade price change, best-quote size imbalance and spread. The reference engine recalculates feature groups on every event; the incremental engine updates only the group whose source payload changed.
+
+## Requirements and quick start
 - Python 3.10+
-- Runtime and tests use the Python standard library. pytest is optional.
+- Runtime and tests use the standard library.
 
-## Quick start
-```bash
+\`\`\`bash
 python -m pip install -e .
 python -m unittest discover -s tests -v
 python -m efc
 python benchmarks/benchmark.py --events 200000 --repeats 5 --windows 10 50 100
-```
-On Windows, use `py -3` in place of `python` if necessary. The benchmark writes `results/latest_benchmark.csv`.
+python benchmarks/benchmark_stage2.py --events 100000 --window 100 --repeats 5
+\`\`\`
 
-## Architecture
-- ReferenceEngine recalculates the current sum from the entire bounded window after each event.
-- EventDrivenEngine uses a preallocated circular buffer and running sum. Once full, it subtracts the expired value and adds the incoming value.
-- Both return exact rational averages using Python Fraction.
-
-Once the window is full, rolling-sum arithmetic per event is O(1) rather than O(N).
+On Windows, use \`py -3\` in place of \`python\` if necessary.
 
 ## Project layout
-- src/efc/: event, result, engine, synthetic data and demo modules.
-- tests/: exact-equivalence and validation tests.
-- benchmarks/: repeated host-side benchmark.
-- research/: scope, hypothesis and methodology.
-- .github/workflows/: automated Python 3.10–3.13 test matrix.
+- \`src/efc/\`: Stage 1 and Stage 2 engines, events, models and demo.
+- \`tests/\`: exact-equivalence, validation and dependency tests.
+- \`benchmarks/\`: host-side performance experiments.
+- \`research/\`: specifications, methodology, experiment logs and reading list.
+- \`.github/workflows/\`: automated tests for Python 3.10–3.13.
 
 ## Interpretation limits
-Operation counters include only rolling-sum additions/subtractions; they are not CPU instruction counts. Python timings are not FPGA, network, exchange or end-to-end trading latency measurements. Synthetic data does not show price predictability or profitability. This is not a live trading system.
+Operation counters cover selected arithmetic only; they are not CPU instruction counts. Python timings are host-dependent and are not FPGA, network, exchange or end-to-end latency measurements. Synthetic events do not establish price predictability or profitability. This repository is not a live trading or order-execution system.

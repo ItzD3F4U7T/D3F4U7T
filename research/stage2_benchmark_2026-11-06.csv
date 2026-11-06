@@ -1,0 +1,2 @@
+python_version,platform,event_count,window_size,repeats,reference_median_ns,incremental_median_ns,reference_ns_per_event,incremental_ns_per_event,runtime_ratio,reference_counted_arithmetic,incremental_counted_arithmetic,arithmetic_reduction_pct,reference_trade_feature_recalculations,incremental_trade_feature_updates,reference_book_feature_recalculations,incremental_book_feature_updates
+3.13.5,Linux x86_64,100000,100,5,972456498,395393428,9724.56498,3953.93428,2.459,19786734,299800,98.48484343095733,100000,75000,100000,50000
