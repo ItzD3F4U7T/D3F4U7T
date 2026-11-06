@@ -5,6 +5,7 @@ venues, route orders, or make trading decisions.
 """
 from __future__ import annotations
 
+from bisect import bisect_left, insort
 from dataclasses import dataclass
 from fractions import Fraction
 from typing import Literal, Protocol
@@ -194,12 +195,16 @@ class _BaseBook:
                 self._executions += 1
                 self._executed_quantity += event.quantity
 
-    def _make_snapshot(self, event: BookEvent, bids, asks, top, ofi):
-        bid, ask, bid_qty, ask_qty = top
+    def _ordered_levels(self, bids, asks):
         bid_levels = tuple(Level(p, values[0], values[1]) for p, values in
                            sorted(bids.items(), reverse=True)[:self.depth])
         ask_levels = tuple(Level(p, values[0], values[1]) for p, values in
                            sorted(asks.items())[:self.depth])
+        return bid_levels, ask_levels
+
+    def _make_snapshot(self, event: BookEvent, bids, asks, top, ofi):
+        bid, ask, bid_qty, ask_qty = top
+        bid_levels, ask_levels = self._ordered_levels(bids, asks)
         if ofi is not None:
             self._cumulative_ofi += ofi
         return BookSnapshot(
@@ -258,9 +263,25 @@ class EventDrivenBookEngine(_BaseBook):
         super().__init__(depth)
         self._bids: dict[int, list[int]] = {}
         self._asks: dict[int, list[int]] = {}
+        # Ascending price indexes: best bid is the final bid entry; best ask
+        # is the first ask entry. They change only when a price level appears
+        # or disappears, not on every quantity adjustment.
+        self._bid_prices: list[int] = []
+        self._ask_prices: list[int] = []
 
     def _current_top(self):
-        return _top(self._bids, self._asks)
+        bid = self._bid_prices[-1] if self._bid_prices else None
+        ask = self._ask_prices[0] if self._ask_prices else None
+        bid_qty = self._bids[bid][0] if bid is not None else 0
+        ask_qty = self._asks[ask][0] if ask is not None else 0
+        return bid, ask, bid_qty, ask_qty
+
+    def _ordered_levels(self, bids, asks):
+        bid_levels = tuple(Level(p, self._bids[p][0], self._bids[p][1])
+                           for p in reversed(self._bid_prices[-self.depth:]))
+        ask_levels = tuple(Level(p, self._asks[p][0], self._asks[p][1])
+                           for p in self._ask_prices[:self.depth])
+        return bid_levels, ask_levels
 
     def _change_level(self, side: Side, price: int, quantity_delta: int, order_delta: int) -> None:
         levels = self._bids if side == "B" else self._asks
@@ -269,11 +290,18 @@ class EventDrivenBookEngine(_BaseBook):
             if quantity_delta <= 0 or order_delta <= 0:
                 raise AssertionError("attempted to remove a missing price level")
             levels[price] = [quantity_delta, order_delta]
+            prices = self._bid_prices if side == "B" else self._ask_prices
+            insort(prices, price)
         else:
             agg[0] += quantity_delta
             agg[1] += order_delta
             if agg[0] == 0:
                 del levels[price]
+                prices = self._bid_prices if side == "B" else self._ask_prices
+                index = bisect_left(prices, price)
+                if index >= len(prices) or prices[index] != price:
+                    raise AssertionError("price index is inconsistent with level map")
+                prices.pop(index)
             elif agg[0] < 0 or agg[1] <= 0:
                 raise AssertionError("negative aggregate book state")
         self._level_updates += 1
