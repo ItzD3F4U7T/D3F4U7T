@@ -16,7 +16,7 @@ class Stage3Tests(unittest.TestCase):
             BookEvent(2, 12, "ADD", "b2", "B", 100, 4),
             BookEvent(3, 13, "ADD", "a2", "S", 102, 6),
             BookEvent(4, 14, "EXECUTE", "b2", quantity=2),
-            BookEvent(5, 15, "CANCEL", "a1", quantity=3),
+            BookEvent(5, 15, "CANCEL", "a2", quantity=3),
         ]
         out = replay(EventDrivenBookEngine(3), events)
         self.assertEqual(out[3].best_bid_ticks, 100)
