@@ -41,6 +41,10 @@ def main():
     if min(args.events, args.window, args.repeats) < 1:
         parser.error("all arguments must be positive")
     events = make_events(args.events)
+    # Warm both implementations on the same prefix before collecting timings.
+    warmup_events = events[:min(10_000, len(events))]
+    run(ReferenceFeatureEngine, warmup_events, args.window)
+    run(EventDrivenFeatureEngine, warmup_events, args.window)
     timings = {"reference": [], "incremental": []}
     metrics = {}
     for i in range(args.repeats):
