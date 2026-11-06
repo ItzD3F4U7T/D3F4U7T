@@ -6,6 +6,7 @@ venues, route orders, or make trading decisions.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from fractions import Fraction
 from typing import Literal, Protocol
 
 Side = Literal["B", "S"]
@@ -73,7 +74,7 @@ class BookSnapshot:
     best_bid_size: int
     best_ask_size: int
     spread_ticks: int | None
-    midpoint_ticks: float | None
+    midpoint_ticks: Fraction | None
     order_count: int
     total_bid_quantity: int
     total_ask_quantity: int
@@ -195,9 +196,9 @@ class _BaseBook:
 
     def _make_snapshot(self, event: BookEvent, bids, asks, top, ofi):
         bid, ask, bid_qty, ask_qty = top
-        bid_levels = tuple(Level(p, q, n) for p, q, n in
+        bid_levels = tuple(Level(p, values[0], values[1]) for p, values in
                            sorted(bids.items(), reverse=True)[:self.depth])
-        ask_levels = tuple(Level(p, q, n) for p, q, n in
+        ask_levels = tuple(Level(p, values[0], values[1]) for p, values in
                            sorted(asks.items())[:self.depth])
         if ofi is not None:
             self._cumulative_ofi += ofi
@@ -205,7 +206,7 @@ class _BaseBook:
             event.sequence, event.timestamp_ns, bid_levels, ask_levels,
             bid, ask, bid_qty, ask_qty,
             ask - bid if bid is not None and ask is not None else None,
-            (bid + ask) / 2 if bid is not None and ask is not None else None,
+            Fraction(bid + ask, 2) if bid is not None and ask is not None else None,
             len(self._orders), self._total_bid_quantity, self._total_ask_quantity,
             ofi, self._cumulative_ofi, self._executed_quantity,
         )
