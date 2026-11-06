@@ -2,7 +2,6 @@
 from .engine import EventDrivenEngine, ReferenceEngine, run_engine
 from .events import TradeEvent
 from .models import EngineMetrics, FeatureSnapshot
-from .stage3 import (BookEvent, BookMetrics, BookSnapshot, EventDrivenBookEngine,\n                     Level, Order, ReferenceBookEngine, replay as replay_book)\nfrom .stage3 import (BookEvent, BookMetrics, BookSnapshot, EventDrivenBookEngine,
                      Level, Order, ReferenceBookEngine, replay as replay_book)
 from .stage2 import (EngineMetrics as Stage2EngineMetrics,
                      EventDrivenFeatureEngine,
